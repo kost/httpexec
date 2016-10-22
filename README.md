@@ -67,6 +67,13 @@ In short, it is quite dangerous to run on the internet exposed server as any use
 
 You can find binary and source releases on Github under "Releases".
 
+# HTTP method mapping
+
+- HEAD request = launch command specified as query (everything behind ?) and don't care about output (blind)
+- GET request = launch command specified as query (everything behind ?) and display output
+- POST request = launch command specified as POST data and display output
+- POST request with query = launch command specified as query (everything behind ?), treat POST data as stdin and display output
+
 # Large set of examples
 
 Here is large set of examples
@@ -163,6 +170,10 @@ Building
 Just type:
 
     go build httpexec.go
+
+Static compiling:
+
+    CGO_ENABLED=0 go build -ldflags "-extldflags -static"
 
 ### Windows builds:
 
