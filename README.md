@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/kost/httpexec.png)](https://travis-ci.org/kost/httpexec)
 
+[![Circle Status](https://circleci.com/gh/kost/httpexec.svg?style=shield&circle-token=:circle-token)](https://circleci.com/gh/kost/httpexec)
+
 # httpexec
 RESTful interface to your operating system shell.
 Swiss knife for your OS shells over the Web.
