@@ -194,8 +194,14 @@ GOOS=darwin GOARCH=386 go build -ldflags="-s -w" -o httpexec-darwin-i386 httpexe
 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o httpexec-darwin-x64 httpexec.go
 ```
 
+### ToDo
+- [ ] Implement http client
+- [ ] Implement TLS client auth
+
+
 Credits
 =======
 
 Vlatko Kosturjak
+
 
