@@ -134,6 +134,32 @@ Here is large set of examples
     $ curl "http://127.0.0.1:8080/test" -d '{"cmd":"tr a-z A-Z","NoJSON":true,"Stdin":"data"}' -H "Content-Type: application/json"
     DATA
 
+# Security options
+
+These are security options you have:
+
+- custom URI/URL (security through obscurity, attacker have to gues URI) - low security
+- basic authentication (username/password authentication) - low security if http (not https)
+- SSL/TLS tunneling (attacker cannot MiTM) - moderate security
+- SSL/TLS client/server verification (depends on security of the keys) - moderate security
+
+You can combine options above for higher security. It is encouraged to combine SSL/TLS with custom URI, basic authentication and client certs.
+
+## Example with SSL client certs
+
+You need to generate CA/server/client certificates and specify verification in command line:
+```
+tools/gencerts.sh
+./httpexec -tls -verify ca.pem
+```
+
+You can then issue curl request as following:
+```
+curl --cert client.crt --key client.key --cacert ca.pem https://127.0.0.1:8080/ -d 'whoami'
+
+```
+
+
 Options explained
 =================
 ```
