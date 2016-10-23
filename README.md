@@ -114,7 +114,7 @@ Here is large set of examples
     $ curl 'http://127.0.0.1:8080/?ifconfig+-a'
     [ifconfig output]
 
-### Simple Example - GET request: run ifconfig -a
+### Simple Example - POST request: run ifconfig -a
 
     $ curl 'http://127.0.0.1:8080/' -d 'ifconfig -a'
     [ifconfig output]
