@@ -9,6 +9,7 @@ import (
 	"log"
 	"io/ioutil"
 	"crypto/tls"
+	"crypto/x509"
 	"net/url"
 	"net/http"
 	"net/http/cgi"
@@ -181,6 +182,7 @@ func main() {
 	flag.StringVar(&realm, "realm", "httpexec", "Basic authentication realm")
 	opttls := flag.Bool("tls",false,"use TLS/SSL")
 	optssl := flag.Bool("ssl",false,"use TLS/SSL")
+	optverify := flag.String("verify", "", "Client cert verification using SSL/TLS (CA) certificate file")
 	flag.BoolVar(&SilentOutput, "silentout", false, "Silent Output (do not display errors)")
 	flag.IntVar(&VerboseLevel, "verbose", 0, "verbose level")
 
@@ -200,12 +202,27 @@ func main() {
 				CurvePreferences: []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
 				PreferServerCipherSuites: true,
 				CipherSuites: []uint16{
-					tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-					tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 					tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+					tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+					tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+					tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
 					tls.TLS_RSA_WITH_AES_256_CBC_SHA,
 				},
 			}
+			// if verify is specified add only specific (CA) certificate to cert pool
+			if (len(*optverify)>0) {
+				caCertPool := x509.NewCertPool()
+				caCert, err := ioutil.ReadFile(*optverify)
+				if err != nil {
+					log.Fatal("Error reading client verification cert: ", err)
+				}
+				caCertPool.AppendCertsFromPEM(caCert)
+
+				tlsCfg.ClientCAs = caCertPool
+				tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+				tlsCfg.BuildNameToCertificate()
+			}
+
 			srv := &http.Server{
 				Addr:		*listen,
 				TLSConfig:	tlsCfg,
