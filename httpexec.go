@@ -199,7 +199,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("WWW-Authenticate", `Basic realm="`+realm+`"`)
 		w.WriteHeader(401)
-		w.Write([]byte("401 Unauthorized\n"))
+		_, err := w.Write([]byte("401 Unauthorized\n"))
+		if err != nil {
+			log.Printf("401 write: %v", err)
+		}
 	}
 }
 
