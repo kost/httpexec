@@ -244,7 +244,10 @@ func main() {
 	}
 
 	if *optcgi {
-		cgi.Serve(http.HandlerFunc(handler))
+		cgiErr := cgi.Serve(http.HandlerFunc(handler))
+		if cgiErr != nil {
+			log.Printf("cgiErr: %v", cgiErr)
+		}
 	} else {
 		http.HandleFunc(*uri, handler)
 		var err error
