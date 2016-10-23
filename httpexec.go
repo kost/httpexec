@@ -172,7 +172,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 // main function with main http loop and command line parsing
 func main() {
-	flag.StringVar(&auth, "auth", "", "auth to require")
+	flag.StringVar(&auth, "auth", "", "basic auth to require - in form user:pass")
 	optcgi := flag.Bool("cgi", false, "CGI mode")
 	cert := flag.String("cert", "server.crt", "SSL/TLS certificate file")
 	key := flag.String("key", "server.key", "SSL/TLS certificate key file")
