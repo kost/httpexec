@@ -107,7 +107,7 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Fields(cmdstr)
 	head := parts[0]
-	parts = parts[1:len(parts)]
+	parts = parts[1:]
 
 	cmd := exec.Command(head, parts...)
 
