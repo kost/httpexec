@@ -13,7 +13,7 @@ Features
 - Single executable (thanks to Go!)
 - Linux/Windows/Mac/BSD support
 - Standalone HTTP Server or CGI mode
-- JSON support (in requests and responses!)
+- (optional) JSON support (in requests and responses!)
 
 Modes of operation
 ==================
