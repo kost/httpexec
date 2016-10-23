@@ -72,7 +72,10 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
 	}
 	cmdstr := ""
-	urlq, _ := url.QueryUnescape(r.URL.RawQuery)
+	urlq, urlErr := url.QueryUnescape(r.URL.RawQuery)
+	if urlErr != nil {
+		log.Printf("url query unescape: %v", urlErr)
+	}
 	if r.Method == "GET" || r.Method == "HEAD" {
 		cmdstr = urlq
 	}
