@@ -224,6 +224,7 @@ GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o httpexec-darwin-x64 httpex
 
 ### ToDo
 - [ ] Implement http client
+- [ ] Implement logging of failed basic auth
 
 ### Done
 - [X] Implement TLS client auth
