@@ -172,7 +172,9 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 		outputjson.Stdout = jStdout.String()
 		outputjson.Stderr = jStderr.String()
 		outputjson.Cmd = cmdstr
-		json.NewEncoder(w).Encode(outputjson)
+		if encodeErr := json.NewEncoder(w).Encode(outputjson); encodeErr != nil {
+			log.Printf("encode: %v", err)
+		}
 	}
 }
 
