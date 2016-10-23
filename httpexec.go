@@ -179,8 +179,8 @@ func main() {
 	uri := flag.String("uri", "/", "URI to serve")
 	listen := flag.String("listen", ":8080", "listen address and port")
 	flag.StringVar(&realm, "realm", "httpexec", "Basic authentication realm")
-	tls := flag.Bool("tls",false,"use TLS/SSL")
-	ssl := flag.Bool("ssl",false,"use TLS/SSL")
+	opttls := flag.Bool("tls",false,"use TLS/SSL")
+	optssl := flag.Bool("ssl",false,"use TLS/SSL")
 	flag.BoolVar(&SilentOutput, "silentout", false, "Silent Output (do not display errors)")
 	flag.IntVar(&VerboseLevel, "verbose", 0, "verbose level")
 
@@ -193,7 +193,7 @@ func main() {
 	} else {
 		http.HandleFunc(*uri, handler)
 		var err error
-		if (*tls || *ssl) {
+		if (*opttls || *optssl) {
 			// secure default TLS configuration
 			tlsCfg := &tls.Config{
 				MinVersion:	tls.VersionTLS12,
