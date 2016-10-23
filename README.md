@@ -66,7 +66,7 @@ In short, it is quite dangerous to run on the internet exposed server as any use
 
 # Download
 
-You can find binary and source releases on Github under "Releases".
+You can find binary and source releases on Github under "Releases". Here's the [link to the latest release](https://github.com/kost/httpexec/releases/latest)
 
 # HTTP method mapping
 
