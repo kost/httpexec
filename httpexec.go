@@ -20,14 +20,14 @@ import (
 	"strings"
 )
 
-// JSON input request
+// CmdReq holds JSON input request.
 type CmdReq struct {
 	Cmd    string
 	Nojson bool
 	Stdin  string
 }
 
-// JSON output request
+// CmdResp holds JSON output request.
 type CmdResp struct {
 	Cmd    string
 	Stdout string
@@ -35,10 +35,14 @@ type CmdResp struct {
 	Err    string
 }
 
-var auth string       // basic authentication combo
-var realm string      // basic authentication realm
-var VerboseLevel int  // global verbosity level
-var SilentOutput bool // silent output
+var auth string  // basic authentication combo
+var realm string // basic authentication realm
+
+// VerboseLevel holds global verbosity level.
+var VerboseLevel int
+
+// SilentOutput is silent output.
+var SilentOutput bool
 
 // check basic authentication if set
 func checkAuth(w http.ResponseWriter, r *http.Request) bool {
