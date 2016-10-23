@@ -164,9 +164,10 @@ curl --cert client.crt --key client.key --cacert ca.pem https://127.0.0.1:8080/ 
 Options explained
 =================
 ```
+$ ./httpexec -h
 Usage of ./httpexec:
   -auth string
-    	auth to require
+    	basic auth to require - in form user:pass
   -cert string
     	SSL/TLS certificate file (default "server.crt")
   -cgi
@@ -187,6 +188,8 @@ Usage of ./httpexec:
     	URI to serve (default "/")
   -verbose int
     	verbose level
+  -verify string
+    	Client cert verification using SSL/TLS (CA) certificate file
 ```
 
 
