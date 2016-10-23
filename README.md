@@ -47,6 +47,7 @@ be useful(and dangerous) for you.
 
 ## Sysadmin/Devops
 
+You need easy way to send commands to your virtualization guests.
 You need to run many commands on multiple machines behind many firewalls.
 You can use it as rudimentary configuration management tool as well.
 
