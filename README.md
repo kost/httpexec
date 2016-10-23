@@ -221,6 +221,7 @@ Just type:
 ### ToDo
 - [ ] Implement http client
 - [ ] Implement logging of failed basic auth
+- [ ] Switch to CGI mode automatically if REQUEST_METHOD env is found
 
 ### Done
 - [X] Implement TLS client auth
