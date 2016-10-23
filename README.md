@@ -212,6 +212,12 @@ Just type:
 
     go build httpexec.go
 
+## Design goals
+
+- prefer builtin go packages over 3rd party packages
+- small as possible
+- self-contained static executable
+
 ### ToDo
 - [ ] Implement http client
 - [ ] Implement logging of failed basic auth
