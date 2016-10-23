@@ -188,7 +188,19 @@ func main() {
 
 	flag.Parse()
 
-	if (VerboseLevel>0) { log.Printf("Starting to listen at %s with URI %s with auth %s",*listen,*uri, auth) }
+	// turn on tls if client verification is specified
+	if len(*optverify)>0 {
+		*opttls=true
+	}
+
+	httpProto:="http"
+	if (*opttls || *optssl) {
+		httpProto="https"
+	}
+
+	if (VerboseLevel>0) { log.Printf("Starting to listen at %s with URI %s as %s", *listen, *uri, httpProto) }
+	if (VerboseLevel>5 && len(auth)>0) { log.Printf("Using basic authentication: %s", auth) }
+	if (VerboseLevel>1 && len(*optverify)>0) { log.Printf("Using TLS/SSL client verification with: %s", *optverify) }
 
 	if (*optcgi) {
 		cgi.Serve(http.HandlerFunc(handler))
