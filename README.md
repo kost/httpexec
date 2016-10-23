@@ -138,12 +138,13 @@ Here is large set of examples
 
 These are security options you have:
 
-- custom URI/URL (security through obscurity, attacker have to gues URI) - low security
+- custom URI/URL (security through obscurity, attacker have to guess URI) - low security
 - basic authentication (username/password authentication) - low security if http (not https)
 - SSL/TLS tunneling (attacker cannot MiTM) - moderate security
 - SSL/TLS client/server verification (depends on security of the keys) - moderate security
 
-You can combine options above for higher security. It is encouraged to combine SSL/TLS with custom URI, basic authentication and client certs.
+You can combine options above for higher security. It is encouraged to combine SSL/TLS with different options above. 
+For highest security - combine all with SSL/TLS (custom URI, basic authentication and client certs).
 
 ## Example with SSL client certs
 
