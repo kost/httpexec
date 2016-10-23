@@ -250,8 +250,8 @@ func main() {
 			// if verify is specified add only specific (CA) certificate to cert pool
 			if len(*optverify) > 0 {
 				caCertPool := x509.NewCertPool()
-				caCert, err := ioutil.ReadFile(*optverify)
-				if err != nil {
+				caCert, readErr := ioutil.ReadFile(*optverify)
+				if readErr != nil {
 					log.Fatal("Error reading client verification cert: ", err)
 				}
 				caCertPool.AppendCertsFromPEM(caCert)
