@@ -80,12 +80,14 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 		var rerr error
 		body, rerr = ioutil.ReadAll(r.Body)
 		if rerr != nil {
+			log.Printf("read Body: %v", rerr)
 		}
+		defer r.Body.Close()
 		if VerboseLevel > 2 {
 			log.Printf("Body: %s", body)
 		}
 
-		if len(urlq) > 0 && r.Method == "POST" {
+		if len(urlq) > 0 {
 			cmdstr = urlq
 		} else {
 			if jsonout {
