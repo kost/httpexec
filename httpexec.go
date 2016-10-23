@@ -85,7 +85,10 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 		if rerr != nil {
 			log.Printf("read Body: %v", rerr)
 		}
-		defer r.Body.Close()
+		if closeErr := r.Body.Close(); closeErr != nil {
+			log.Printf("body close: %v", closeErr)
+
+		}
 		if VerboseLevel > 2 {
 			log.Printf("Body: %s", body)
 		}
