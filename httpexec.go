@@ -166,11 +166,10 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func retlogstr(entry string) string {
-	if len(entry) > 0 {
-		return entry
-	} else {
+	if len(entry) == 0 {
 		return "-"
 	}
+	return entry
 }
 
 // main handler which basically checks (basic) authentication first
