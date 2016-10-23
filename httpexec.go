@@ -160,7 +160,10 @@ func contHandler(w http.ResponseWriter, r *http.Request) {
 			outputjson.Err = err.Error()
 		} else {
 			if !SilentOutput {
-				w.Write([]byte(err.Error()))
+				_, writeErr := w.Write([]byte(err.Error()))
+				if writeErr != nil {
+					log.Printf("write: %v", writeErr)
+				}
 			}
 		}
 	}
