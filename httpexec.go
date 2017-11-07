@@ -6,18 +6,23 @@ package main
 
 import (
 	"bytes"
+	"bufio"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/cgi"
 	"net/url"
+	"os"
 	"os/exec"
 	"strings"
+	"time"
+	"golang.org/x/net/proxy"
 )
 
 // CmdReq holds JSON input request.
@@ -38,11 +43,14 @@ type CmdResp struct {
 var auth string  // basic authentication combo
 var realm string // basic authentication realm
 
-// VerboseLevel holds global verbosity level.
-var VerboseLevel int
-
-// SilentOutput is silent output.
-var SilentOutput bool
+var VerboseLevel int // VerboseLevel holds global verbosity level.
+var SilentOutput bool // SilentOutput is silent output.
+var MethodToUse string // Method to use in query
+var DelayDuration string // Delay between queries
+var Socks5 string // SOCKS5 proxy
+var ProxyStr string // HTTP proxy
+var TLScert string
+var TLSkey string
 
 // check basic authentication if set
 func checkAuth(w http.ResponseWriter, r *http.Request) bool {
@@ -206,15 +214,255 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func clienturl(urlstr string) {
+	outputs := ""
+
+	delay, _ := time.ParseDuration(DelayDuration)
+
+	httpTransport := &http.Transport{}
+	if len(ProxyStr)>0 {
+		proxyUrl, err := url.Parse(ProxyStr)
+		if err != nil {
+			log.Printf("proxy parse error: %v", err)
+		}
+		// httpTransport = &http.Transport{Proxy: http.ProxyURL(proxyUrl)}
+		httpTransport.Proxy = http.ProxyURL(proxyUrl)
+	}
+
+	tlsCfg := genTlsConfig("")
+	if len(TLSkey)>0 {
+		// Load client cert
+		cert, err := tls.LoadX509KeyPair(TLScert, TLSkey)
+		if err != nil {
+			log.Fatal(err)
+		}
+		tlsCfg.Certificates = []tls.Certificate{cert}
+	}
+	httpTransport.TLSClientConfig = tlsCfg
+
+
+	// forever
+	for {
+
+	// http client
+	httpClient := &http.Client{Transport: httpTransport}
+
+	if len(Socks5)>0 {
+		dialer, err := proxy.SOCKS5("tcp", Socks5, nil, proxy.Direct)
+		if err != nil {
+			log.Printf("socks dial error: %v", err)
+		}
+		httpTransport.Dial = dialer.Dial
+	}
+
+	u, err := url.Parse(urlstr)
+	if err != nil {
+		log.Printf("can't parse request: %v", err)
+	}
+
+	q := u.Query()
+
+	var bodyreq io.Reader //bytes.Buffer
+	bodyreq = nil
+
+	// if GET query
+	if MethodToUse == "GET" {
+		q.Add("output",outputs)
+		u.RawQuery = q.Encode()
+		u.String()
+	}
+
+	if MethodToUse == "POST" {
+		bodyreq = strings.NewReader(outputs)
+		// bytes.NewBufferString(outputs)
+	}
+
+	if MethodToUse == "PUT" {
+		bodyreq = strings.NewReader(outputs)
+		// bodyreq = bytes.NewBufferString(outputs)
+	}
+
+	urlsubmit := u.String()
+
+	req, err := http.NewRequest(MethodToUse, urlsubmit, bodyreq)
+	if err != nil {
+		log.Printf("can't create request: %v", err)
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		log.Printf("can't execute request: %v", err)
+	} else {
+		defer resp.Body.Close()
+		cont, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("can't read request: %v", err)
+		}
+		outputs = ""
+
+		content := string(cont)
+		for _, line := range strings.Split(strings.TrimSuffix(content, "\n"), "\n") {
+
+		cmdstr:=line
+		log.Printf(cmdstr)
+		if VerboseLevel > 0 {
+			log.Printf("Command to execute: %s", cmdstr)
+		}
+
+		if len(cmdstr) < 1 {
+			return
+		}
+
+		parts := strings.Fields(cmdstr)
+		head := parts[0]
+		parts = parts[1:]
+
+		cmd := exec.Command(head, parts...)
+
+		var errcmd error
+		//var jStdout bytes.Buffer
+		//var jStderr bytes.Buffer
+		var comb bytes.Buffer
+		cmd.Stdout = &comb
+		cmd.Stderr = &comb
+		errcmd = cmd.Run()
+		if errcmd != nil {
+			if VerboseLevel > 0 {
+				log.Printf("Error executing: %s", errcmd)
+			}
+			//if jsonout {
+			//	outputjson.Err = err.Error()
+			//}
+		}
+		output := comb.String()
+		if VerboseLevel > 0 {
+			log.Printf("Output of execute: %s", output)
+		}
+		outputs = outputs + output
+		} // for each line
+	}
+	time.Sleep(delay)
+	}
+}
+
+func genTlsConfig(verify string) *tls.Config {
+	var err error
+	tlsCfg := &tls.Config{
+		MinVersion:               tls.VersionTLS12,
+		CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			// turn on for beter security if you have supported
+			// tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
+			// tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			tls.TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+	}
+	// if verify is specified add only specific (CA) certificate to cert pool
+	if len(verify) > 0 {
+		caCertPool := x509.NewCertPool()
+		caCert, readErr := ioutil.ReadFile(verify)
+		if readErr != nil {
+			log.Fatal("Error reading client verification cert: ", err)
+		}
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tlsCfg.ClientCAs = caCertPool
+		tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
+		tlsCfg.BuildNameToCertificate()
+	}
+	return tlsCfg
+}
+
+func cmdHandler(w http.ResponseWriter, r *http.Request) {
+	var jsonout bool
+	var inputjson CmdReq
+	// var outputjson CmdResp
+	var body []byte
+	if r.Header.Get("Content-Type") == "application/json" {
+		w.Header().Set("Content-Type", "application/json")
+		jsonout = true
+	} else {
+		w.Header().Set("Content-Type", "text/plain")
+	}
+	cmdstr := ""
+	urlq, urlErr := url.QueryUnescape(r.URL.RawQuery)
+	if urlErr != nil {
+		log.Printf("url query unescape: %v", urlErr)
+	}
+	if r.Method == "GET" || r.Method == "HEAD" {
+		cmdstr = urlq
+	}
+	if r.Method == "POST" {
+		var rerr error
+		body, rerr = ioutil.ReadAll(r.Body)
+		if rerr != nil {
+			log.Printf("read Body: %v", rerr)
+		}
+		if closeErr := r.Body.Close(); closeErr != nil {
+			log.Printf("body close: %v", closeErr)
+
+		}
+		if VerboseLevel > 2 {
+			log.Printf("Body: %s", body)
+		}
+
+		if len(urlq) > 0 {
+			cmdstr = urlq
+		} else {
+			if jsonout {
+				jerr := json.Unmarshal(body, &inputjson)
+				if jerr != nil {
+					// http.Error(w, jerr.Error(), 400)
+					return
+				}
+				cmdstr = inputjson.Cmd
+				jsonout = !inputjson.Nojson
+			} else {
+				cmdstr = string(body)
+			}
+		}
+	}
+	if VerboseLevel > 0 {
+		log.Printf("Command to execute: %s", cmdstr)
+	}
+
+	if len(cmdstr) < 1 {
+		return
+	}
+
+	// dummy
+	if jsonout {
+		return
+	}
+}
+
+func takeinput() {
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		str := scanner.Text()
+		log.Printf("Execute: %s", str)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Printf("Scanner error: %v", err)
+	}
+}
+
 // main function with main http loop and command line parsing
 func main() {
 	flag.StringVar(&auth, "auth", "", "basic auth to require - in form user:pass")
 	optcgi := flag.Bool("cgi", false, "CGI mode")
-	cert := flag.String("cert", "server.crt", "SSL/TLS certificate file")
-	key := flag.String("key", "server.key", "SSL/TLS certificate key file")
+	flag.StringVar(&TLScert,"cert", "", "SSL/TLS certificate file")
+	flag.StringVar(&TLSkey,"key", "", "SSL/TLS certificate key file")
 	uri := flag.String("uri", "/", "URI to serve")
 	listen := flag.String("listen", ":8080", "listen address and port")
+	url := flag.String("url", "", "connect URL in client mode")
 	flag.StringVar(&realm, "realm", "httpexec", "Basic authentication realm")
+	flag.StringVar(&DelayDuration, "delay", "60s", "delay between requests (in hms/duration)")
+	flag.StringVar(&Socks5, "socks5", "", "SOCKS5 proxy in form host:port")
+	flag.StringVar(&ProxyStr, "proxy", "", "HTTP proxy in form http://host:port")
+	flag.StringVar(&MethodToUse, "method", "POST", "what HTTP mode to use in client mode")
 	opttls := flag.Bool("tls", false, "use TLS/SSL")
 	optssl := flag.Bool("ssl", false, "use TLS/SSL")
 	optverify := flag.String("verify", "", "Client cert verification using SSL/TLS (CA) certificate file")
@@ -222,6 +470,7 @@ func main() {
 	flag.IntVar(&VerboseLevel, "verbose", 0, "verbose level")
 
 	flag.Parse()
+	takeinput()
 
 	// turn on tls if client verification is specified
 	if len(*optverify) > 0 {
@@ -233,9 +482,6 @@ func main() {
 		httpProto = "https"
 	}
 
-	if VerboseLevel > 0 {
-		log.Printf("Starting to listen at %s with URI %s as %s", *listen, *uri, httpProto)
-	}
 	if VerboseLevel > 5 && len(auth) > 0 {
 		log.Printf("Using basic authentication: %s", auth)
 	}
@@ -243,6 +489,17 @@ func main() {
 		log.Printf("Using TLS/SSL client verification with: %s", *optverify)
 	}
 
+	if len(*url) > 0 {
+		if VerboseLevel > 0 {
+			log.Printf("Starting client URL loop: %s", *url)
+		}
+		clienturl(*url)
+		os.Exit(0)
+	}
+
+	if VerboseLevel > 0 {
+		log.Printf("Starting to listen at %s with URI %s as %s", *listen, *uri, httpProto)
+	}
 	if *optcgi {
 		cgiErr := cgi.Serve(http.HandlerFunc(handler))
 		if cgiErr != nil {
@@ -252,39 +509,19 @@ func main() {
 		http.HandleFunc(*uri, handler)
 		var err error
 		if *opttls || *optssl {
-			// secure default TLS configuration
-			tlsCfg := &tls.Config{
-				MinVersion:               tls.VersionTLS12,
-				CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-				PreferServerCipherSuites: true,
-				CipherSuites: []uint16{
-					// turn on for beter security if you have supported
-					// tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-					// tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-					tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-					tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-					tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-				},
-			}
-			// if verify is specified add only specific (CA) certificate to cert pool
-			if len(*optverify) > 0 {
-				caCertPool := x509.NewCertPool()
-				caCert, readErr := ioutil.ReadFile(*optverify)
-				if readErr != nil {
-					log.Fatal("Error reading client verification cert: ", err)
-				}
-				caCertPool.AppendCertsFromPEM(caCert)
-
-				tlsCfg.ClientCAs = caCertPool
-				tlsCfg.ClientAuth = tls.RequireAndVerifyClientCert
-				tlsCfg.BuildNameToCertificate()
-			}
-
+			tlsCfg := genTlsConfig(*optverify);
 			srv := &http.Server{
 				Addr:      *listen,
 				TLSConfig: tlsCfg,
 			}
-			err = srv.ListenAndServeTLS(*cert, *key)
+			// server defaults
+			if len(TLScert) == 0 {
+				TLScert = "server.crt"
+			}
+			if len(TLSkey) == 0 {
+				TLSkey = "server.key"
+			}
+			err = srv.ListenAndServeTLS(TLScert, TLSkey)
 		} else {
 			err = http.ListenAndServe(*listen, nil)
 		}
