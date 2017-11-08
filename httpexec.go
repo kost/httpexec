@@ -209,10 +209,9 @@ func dispHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-
 // main handler which basically checks (basic) authentication first
 func handler(w http.ResponseWriter, r *http.Request) {
-	if VerboseLevel > 0 {
+	if VerboseLevel > 1 {
 		log.Printf("%s %s %s %s %s", retlogstr(r.RemoteAddr), retlogstr(r.Header.Get("X-Forwarded-For")), r.Method, r.RequestURI, retlogstr(r.URL.RawQuery))
 	}
 	if auth == "" {
@@ -229,6 +228,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			log.Printf("401 write: %v", err)
 		}
 	}
+}
+
+func delayFor() {
+	delay, _ := time.ParseDuration(DelayDuration)
+	if VerboseLevel > 5 {
+		log.Printf("Sleeping for: %d", delay)
+	}
+	time.Sleep(delay)
 }
 
 func clienturl(urlstr string) {
@@ -268,6 +275,8 @@ func clienturl(urlstr string) {
 		dialer, err := proxy.SOCKS5("tcp", Socks5, nil, proxy.Direct)
 		if err != nil {
 			log.Printf("socks dial error: %v", err)
+			time.Sleep(delay)
+			continue
 		}
 		httpTransport.Dial = dialer.Dial
 	}
@@ -275,6 +284,8 @@ func clienturl(urlstr string) {
 	u, err := url.Parse(urlstr)
 	if err != nil {
 		log.Printf("can't parse request: %v", err)
+		time.Sleep(delay)
+		continue
 	}
 
 	q := u.Query()
@@ -304,15 +315,29 @@ func clienturl(urlstr string) {
 	req, err := http.NewRequest(MethodToUse, urlsubmit, bodyreq)
 	if err != nil {
 		log.Printf("can't create request: %v", err)
+		time.Sleep(delay)
+		continue
 	}
 	resp, err := httpClient.Do(req)
 	if err != nil {
 		log.Printf("can't execute request: %v", err)
+		time.Sleep(delay)
+		continue
 	} else {
+		// if HTTP response code is not 200, skip processing
+		if resp.StatusCode != 200 {
+			if VerboseLevel > 1 {
+				log.Printf("Response code is not 200: %d, skipping", resp.StatusCode)
+			}
+			time.Sleep(delay)
+			continue
+		}
 		defer resp.Body.Close()
 		cont, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			log.Printf("can't read request: %v", err)
+			time.Sleep(delay)
+			continue
 		}
 		outputs = ""
 
@@ -444,14 +469,16 @@ func cmdHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log.Printf("Output of command: %s", cmdstr)
+	if len(cmdstr)>0 {
+		log.Printf("Output of command: %s", cmdstr)
+	}
 
 	if r.Method == "HEAD" {
 		log.Printf("Got HEAD pong from: %s", cmdstr)
 	} else {
 		for i, cmd := range CmdBuff {
-			if VerboseLevel > 0 {
-				log.Printf("Command %d to execute: %s", i, cmd)
+			if VerboseLevel > 1 {
+				log.Printf("Queuing command %d to execute: %s", i, cmd)
 			}
 			fmt.Fprintf(w, "%s\n", cmd)
 		}
@@ -476,12 +503,11 @@ func dumpCmdBuff() {
 
 func takeinput() {
 	scanner := bufio.NewScanner(os.Stdin)
-	dumpCmdBuff()
 	for scanner.Scan() {
 		str := scanner.Text()
 		log.Printf("Execute: %s", str)
 		CmdBuff = append(CmdBuff, str)
-		dumpCmdBuff()
+		// dumpCmdBuff()
 	}
 	if err := scanner.Err(); err != nil {
 		log.Printf("Scanner error: %v", err)
@@ -532,7 +558,7 @@ func main() {
 	opttls := flag.Bool("tls", false, "use TLS/SSL")
 	optssl := flag.Bool("ssl", false, "use TLS/SSL")
 	flag.StringVar(&OptVerify, "verify", "", "Client cert verification using SSL/TLS (CA) certificate file")
-	flag.BoolVar(&OptCmd, "cmd", false, "Command mode")
+	flag.BoolVar(&OptCmd, "cmd", false, "Command mode (handler for reverse/client mode)")
 	flag.BoolVar(&SilentOutput, "silentout", false, "Silent Output (do not display errors)")
 	flag.IntVar(&VerboseLevel, "verbose", 0, "verbose level")
 
